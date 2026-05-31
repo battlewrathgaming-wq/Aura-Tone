@@ -14,6 +14,7 @@ const state = {
   tempo: 108,
   gearMix: 0.72,
   fieldMix: 0.42,
+  fieldMode: 'stepped',
   fieldFrequency: 180,
   gears: [
     { id: 'A', teeth: 11, speed: 1, phase: 0.05, tone: 180, voice: 'sine', lastTooth: -1 },
@@ -72,6 +73,9 @@ function bootControls() {
   byId('transport-toggle').addEventListener('click', toggleTransport);
   byId('randomize-patch').addEventListener('click', randomizePatch);
   byId('freeze-patch').addEventListener('click', toggleFreeze);
+  document.querySelectorAll('[data-field-mode]').forEach((button) => {
+    button.addEventListener('click', () => setFieldMode(button.dataset.fieldMode));
+  });
   bindRange('tempo-control', (value) => {
     state.tempo = value;
     setText('tempo-value', `${Math.round(value)} bpm`);
@@ -192,11 +196,11 @@ function updateFieldTone() {
     return;
   }
   const coherence = averageCoherence();
-  const stepped = Math.round(coherence * 12) / 12;
-  const target = FIELD_MIN + (FIELD_MAX - FIELD_MIN) * stepped;
+  const target = fieldFrequencyForCoherence(coherence);
   const context = state.audio.context;
+  const ramp = state.fieldMode === 'glide' ? 0.22 : 0.08;
   state.fieldFrequency = target;
-  state.audio.fieldOsc.frequency.setTargetAtTime(target, context.currentTime, 0.08);
+  state.audio.fieldOsc.frequency.setTargetAtTime(target, context.currentTime, ramp);
   state.audio.fieldFilter.frequency.setTargetAtTime(260 + coherence * 1600, context.currentTime, 0.1);
   updateFieldGain();
 }
@@ -287,6 +291,22 @@ function randomizePatch() {
   updateFieldTone();
   renderAll();
   pushLog('patch mutated');
+}
+
+function setFieldMode(mode) {
+  if (!['stepped', 'glide', 'constant'].includes(mode)) {
+    return;
+  }
+  state.fieldMode = mode;
+  document.querySelectorAll('[data-field-mode]').forEach((button) => {
+    const active = button.dataset.fieldMode === mode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  setText('field-mode', mode);
+  updateFieldTone();
+  renderField();
+  pushLog(`field ${mode}`);
 }
 
 function toggleFreeze() {
@@ -388,6 +408,17 @@ function renderField() {
   const coherence = averageCoherence();
   setText('field-frequency', `${Math.round(state.fieldFrequency)} Hz`);
   byId('field-meter-fill').style.width = `${Math.round(coherence * 100)}%`;
+}
+
+function fieldFrequencyForCoherence(coherence) {
+  if (state.fieldMode === 'constant') {
+    return 220;
+  }
+  if (state.fieldMode === 'glide') {
+    return FIELD_MIN + (FIELD_MAX - FIELD_MIN) * coherence;
+  }
+  const stepped = Math.round(coherence * 12) / 12;
+  return FIELD_MIN + (FIELD_MAX - FIELD_MIN) * stepped;
 }
 
 async function toggleAlwaysOnTop() {

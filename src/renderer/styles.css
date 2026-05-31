@@ -324,7 +324,7 @@ input[type="range"] {
 .field-value {
   display: grid;
   gap: 5px;
-  margin-bottom: 14px;
+  margin: 12px 0 14px;
 }
 
 .field-value span {
@@ -340,6 +340,29 @@ input[type="range"] {
 .field-meter {
   height: 14px;
   margin-bottom: 14px;
+}
+
+.field-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mode-button {
+  min-width: 0;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #101513;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.76rem;
+}
+
+.mode-button:hover,
+.mode-button.active {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .field-stats {
