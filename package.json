@@ -1,0 +1,20 @@
+{
+  "name": "aura-tone",
+  "version": "0.1.0",
+  "description": "Light local-first sound panel for phase, gear, and coherence experiments.",
+  "main": "src/main/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "verify:all": "node scripts/verify-all.js",
+    "verify:core": "node scripts/verify-core.js",
+    "verify:services": "node scripts/verify-services.js",
+    "verify:http": "node scripts/verify-http-client.js",
+    "verify:sde-source": "node scripts/verify-sde-source-bundle.js",
+    "verify:frame": "node scripts/verify-frame-module.js",
+    "verify:renderer-shell": "node scripts/verify-renderer-shell.js"
+  },
+  "devDependencies": {
+    "electron": "^42.2.0"
+  }
+}
