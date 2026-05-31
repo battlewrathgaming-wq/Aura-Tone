@@ -12,6 +12,8 @@ Current intent:
 - terminal-ish presentation
 - portable renderer-first implementation where possible
 
+High-level concept: `docs/high-level-view.md`
+
 Inherited rigging:
 
 - stateful documentation folders and templates

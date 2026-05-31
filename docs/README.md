@@ -2,6 +2,10 @@
 
 This folder is for durable Aura Tone knowledge only.
 
+Current durable notes:
+
+- `high-level-view.md` captures the product concept, sound model, first-screen shape, and parked later ideas.
+
 Do not create a full documentation hierarchy speculatively during project launch.
 
 Active agent coordination belongs in `workspace/`.
