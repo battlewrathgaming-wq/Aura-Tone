@@ -146,6 +146,7 @@ function tick(now) {
 
 function advanceMachine(steps) {
   state.tick += steps;
+  const highHits = new Set();
   for (const gear of state.gears) {
     const previousTooth = gear.lastTooth;
     gear.phase = wrap01(gear.phase + steps * gear.speed / gear.teeth);
@@ -153,9 +154,12 @@ function advanceMachine(steps) {
     if (tooth !== previousTooth) {
       gear.lastTooth = tooth;
       triggerGear(gear, tooth);
+      if (tooth === 0) {
+        highHits.add(gear.id);
+      }
     }
   }
-  const catches = updateConnectors({ detectCatch: true });
+  const catches = updateConnectors({ detectCatch: true, highHits });
   for (const connector of catches) {
     advanceFieldStep(connector.id);
   }
@@ -198,7 +202,8 @@ function updateConnectors(options = {}) {
     const pull = 1 - connector.distance;
     connector.coherence = clamp01((closeness * 0.7 + pull * connector.conductivity * 0.3) * (1 - connector.slip));
     if (options.detectCatch) {
-      if (!connector.caught && connector.coherence >= CATCH_ON) {
+      const highHit = options.highHits?.has(connector.from) || options.highHits?.has(connector.to);
+      if (!connector.caught && connector.coherence >= CATCH_ON && highHit) {
         connector.caught = true;
         catches.push(connector);
       } else if (connector.caught && connector.coherence <= CATCH_OFF) {
