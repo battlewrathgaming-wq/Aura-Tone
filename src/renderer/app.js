@@ -20,6 +20,8 @@ const state = {
   fieldStepIndex: 0,
   fieldSteps: [-5, 0, 4, 7],
   fieldFrequency: 180,
+  events: [],
+  lastToneStateWriteAt: 0,
   gears: [
     { id: 'A', teeth: 11, speed: 1, phase: 0.05, tone: 180, voice: 'sine', lastTooth: -1 },
     { id: 'B', teeth: 7, speed: 0.63, phase: 0.31, tone: 247, voice: 'triangle', lastTooth: -1 },
@@ -345,6 +347,10 @@ function bindFieldStep(index) {
     renderFieldSteps();
     updateFieldTone();
     renderField();
+    queueToneStateWrite({
+      kind: 'field-step',
+      message: `field step ${index + 1} set ${signedStep(state.fieldSteps[index])}`
+    });
   };
   input.addEventListener('input', update);
   update();
@@ -450,6 +456,10 @@ function refreshConnectorRow(connector, fill, coherence) {
   coherence.textContent = `coh ${Math.round(connector.coherence * 100)}%`;
   setText('coherence-readout', `coh ${Math.round(averageCoherence() * 100)}%`);
   renderField();
+  queueToneStateWrite({
+    kind: 'connector',
+    message: `${connector.id} dist ${Math.round(connector.distance * 100)} slip ${Math.round(connector.slip * 100)}`
+  });
 }
 
 function renderField() {
@@ -499,6 +509,15 @@ function renderFrameState() {
 }
 
 function pushLog(message) {
+  const event = {
+    at: new Date().toISOString(),
+    tick: state.tick,
+    kind: toneEventKind(message),
+    message
+  };
+  state.events.unshift(event);
+  state.events = state.events.slice(0, 16);
+
   const list = byId('event-log');
   const item = document.createElement('li');
   item.textContent = `${pad(state.tick, 4)} ${message}`;
@@ -506,6 +525,85 @@ function pushLog(message) {
   while (list.children.length > 8) {
     list.lastElementChild.remove();
   }
+  queueToneStateWrite(event);
+}
+
+function queueToneStateWrite(event = null) {
+  if (!window.aura?.invokeService) {
+    return;
+  }
+  const now = performance.now();
+  const kind = event?.kind || 'state';
+  const notable = !['gear', 'connector', 'field-step'].includes(kind);
+  if (!notable && now - state.lastToneStateWriteAt < 900) {
+    return;
+  }
+  state.lastToneStateWriteAt = now;
+  window.aura.invokeService('tone.state.write', {
+    snapshot: toneSnapshot(),
+    event: notable ? event : null
+  }).catch((error) => {
+    console.warn('tone state write failed', error);
+  });
+}
+
+function toneSnapshot() {
+  return {
+    version: 1,
+    at: new Date().toISOString(),
+    running: state.running,
+    frozen: state.frozen,
+    tick: state.tick,
+    tempo: state.tempo,
+    mixes: {
+      gear: state.gearMix,
+      field: state.fieldMix
+    },
+    pressure: {
+      gear_event: latestEventOfKind('gear'),
+      connector_current: round(averageCoherence(), 3),
+      spark: latestEventOfKind('catch')
+    },
+    field: {
+      mode: state.fieldMode,
+      frequency: Math.round(state.fieldFrequency),
+      step_index: state.fieldStepIndex,
+      steps: [...state.fieldSteps]
+    },
+    gears: state.gears.map((gear) => ({
+      id: gear.id,
+      teeth: gear.teeth,
+      speed: gear.speed,
+      phase: round(gear.phase, 4),
+      tone: gear.tone,
+      voice: gear.voice,
+      tooth: gear.lastTooth
+    })),
+    connectors: state.connectors.map((connector) => ({
+      id: connector.id,
+      from: connector.from,
+      to: connector.to,
+      distance: connector.distance,
+      slip: connector.slip,
+      conductivity: connector.conductivity,
+      coherence: round(connector.coherence, 3),
+      caught: connector.caught
+    })),
+    events: state.events
+  };
+}
+
+function toneEventKind(message) {
+  if (message.startsWith('gear ')) return 'gear';
+  if (message.startsWith('catch ')) return 'catch';
+  if (message.startsWith('field ')) return 'field';
+  if (message.startsWith('patch ')) return 'patch';
+  if (message.startsWith('transport ')) return 'transport';
+  return 'state';
+}
+
+function latestEventOfKind(kind) {
+  return state.events.find((event) => event.kind === kind) || null;
 }
 
 function bindRange(id, onChange) {

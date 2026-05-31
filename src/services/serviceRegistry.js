@@ -1,3 +1,5 @@
+const fs = require('node:fs');
+const path = require('node:path');
 const { checksumPayload } = require('../util/checksum');
 const { APP_NAME } = require('../constants');
 const { defaultTaskRunner, TASK_CLASSIFICATIONS } = require('./taskRunner');
@@ -102,6 +104,22 @@ function createDefaultRegistry(options = {}) {
         checksum: checksumPayload(payload.value)
       })
     })
+    .register('tone.state.write', {
+      classification: TASK_CLASSIFICATIONS.LOCAL_MUTATION,
+      description: 'Write the latest Aura Tone state snapshot and notable event',
+      validate: (payload) => {
+        if (!payload || typeof payload !== 'object' || typeof payload.snapshot !== 'object') {
+          return 'tone.state.write requires a snapshot object';
+        }
+        return true;
+      },
+      handler: (payload) => writeToneState(payload)
+    })
+    .register('tone.state.read', {
+      classification: TASK_CLASSIFICATIONS.READ_ONLY,
+      description: 'Read the latest Aura Tone state snapshot and recent event stream',
+      handler: (payload) => readToneState(payload)
+    })
     .register('task.list', {
       classification: TASK_CLASSIFICATIONS.READ_ONLY,
       description: 'Return recent task history',
@@ -114,6 +132,64 @@ function createDefaultRegistry(options = {}) {
     });
 
   return registry;
+}
+
+function toneStatePaths() {
+  const root = auraTempRoot();
+  return {
+    statePath: path.join(root, 'tone-state.json'),
+    eventsPath: path.join(root, 'tone-events.ndjson')
+  };
+}
+
+function writeToneState(payload) {
+  const { statePath, eventsPath } = toneStatePaths();
+  const snapshot = {
+    ...payload.snapshot,
+    written_at: new Date().toISOString()
+  };
+  fs.writeFileSync(statePath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+
+  if (payload.event && typeof payload.event === 'object') {
+    const entry = {
+      at: new Date().toISOString(),
+      ...payload.event
+    };
+    fs.appendFileSync(eventsPath, `${JSON.stringify(entry)}\n`, 'utf8');
+  }
+
+  return {
+    ok: true,
+    state_path: statePath,
+    events_path: eventsPath
+  };
+}
+
+function readToneState(payload = {}) {
+  const { statePath, eventsPath } = toneStatePaths();
+  const eventLimit = Math.max(1, Math.min(80, Number(payload.limit) || 20));
+  let snapshot = null;
+  let events = [];
+
+  if (fs.existsSync(statePath)) {
+    snapshot = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  }
+
+  if (fs.existsSync(eventsPath)) {
+    events = fs.readFileSync(eventsPath, 'utf8')
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .slice(-eventLimit)
+      .map((line) => JSON.parse(line));
+  }
+
+  return {
+    ok: true,
+    state_path: statePath,
+    events_path: eventsPath,
+    snapshot,
+    events
+  };
 }
 
 function validatePayload(definition, payload, context, command) {
