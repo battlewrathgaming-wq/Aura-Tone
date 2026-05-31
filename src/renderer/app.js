@@ -15,6 +15,8 @@ const state = {
   gearMix: 0.72,
   fieldMix: 0.42,
   fieldMode: 'stepped',
+  fieldStepIndex: 0,
+  fieldSteps: [-5, 0, 4, 7],
   fieldFrequency: 180,
   gears: [
     { id: 'A', teeth: 11, speed: 1, phase: 0.05, tone: 180, voice: 'sine', lastTooth: -1 },
@@ -76,6 +78,7 @@ function bootControls() {
   document.querySelectorAll('[data-field-mode]').forEach((button) => {
     button.addEventListener('click', () => setFieldMode(button.dataset.fieldMode));
   });
+  state.fieldSteps.forEach((_step, index) => bindFieldStep(index));
   bindRange('tempo-control', (value) => {
     state.tempo = value;
     setText('tempo-value', `${Math.round(value)} bpm`);
@@ -140,7 +143,9 @@ function tick(now) {
 }
 
 function advanceMachine(steps) {
+  const previousFieldStep = state.fieldStepIndex;
   state.tick += steps;
+  state.fieldStepIndex = Math.floor(state.tick / 4) % state.fieldSteps.length;
   for (const gear of state.gears) {
     const previousTooth = gear.lastTooth;
     gear.phase = wrap01(gear.phase + steps * gear.speed / gear.teeth);
@@ -152,6 +157,9 @@ function advanceMachine(steps) {
   }
   updateConnectors();
   updateFieldTone();
+  if (state.fieldStepIndex !== previousFieldStep) {
+    pushLog(`field step ${state.fieldStepIndex + 1} ${signedStep(state.fieldSteps[state.fieldStepIndex])}`);
+  }
 }
 
 function triggerGear(gear, tooth) {
@@ -192,14 +200,14 @@ function updateConnectors() {
 }
 
 function updateFieldTone() {
+  const coherence = averageCoherence();
+  const target = fieldFrequencyForCoherence(coherence);
+  state.fieldFrequency = target;
   if (!state.audio?.fieldOsc) {
     return;
   }
-  const coherence = averageCoherence();
-  const target = fieldFrequencyForCoherence(coherence);
   const context = state.audio.context;
   const ramp = state.fieldMode === 'glide' ? 0.22 : 0.08;
-  state.fieldFrequency = target;
   state.audio.fieldOsc.frequency.setTargetAtTime(target, context.currentTime, ramp);
   state.audio.fieldFilter.frequency.setTargetAtTime(260 + coherence * 1600, context.currentTime, 0.1);
   updateFieldGain();
@@ -309,6 +317,18 @@ function setFieldMode(mode) {
   pushLog(`field ${mode}`);
 }
 
+function bindFieldStep(index) {
+  const input = byId(`field-step-${index}`);
+  const update = () => {
+    state.fieldSteps[index] = Number(input.value);
+    renderFieldSteps();
+    updateFieldTone();
+    renderField();
+  };
+  input.addEventListener('input', update);
+  update();
+}
+
 function toggleFreeze() {
   state.frozen = !state.frozen;
   const button = byId('freeze-patch');
@@ -320,9 +340,11 @@ function toggleFreeze() {
 
 function renderAll() {
   updateConnectors();
+  updateFieldTone();
   renderGears();
   renderConnectors();
   renderField();
+  renderFieldSteps();
   setText('tick-readout', `tick ${pad(state.tick, 4)}`);
   setText('coherence-readout', `coh ${Math.round(averageCoherence() * 100)}%`);
 }
@@ -416,14 +438,26 @@ function renderField() {
 }
 
 function fieldFrequencyForCoherence(coherence) {
+  const stepOffset = state.fieldSteps[state.fieldStepIndex] || 0;
+  const stepMultiplier = 2 ** (stepOffset / 12);
+  let base;
   if (state.fieldMode === 'constant') {
-    return 220;
+    base = 220;
+  } else if (state.fieldMode === 'glide') {
+    base = FIELD_MIN + (FIELD_MAX - FIELD_MIN) * coherence;
+  } else {
+    const stepped = Math.round(coherence * 12) / 12;
+    base = FIELD_MIN + (FIELD_MAX - FIELD_MIN) * stepped;
   }
-  if (state.fieldMode === 'glide') {
-    return FIELD_MIN + (FIELD_MAX - FIELD_MIN) * coherence;
-  }
-  const stepped = Math.round(coherence * 12) / 12;
-  return FIELD_MIN + (FIELD_MAX - FIELD_MIN) * stepped;
+  return clamp(base * stepMultiplier, FIELD_MIN / 2, FIELD_MAX * 2);
+}
+
+function renderFieldSteps() {
+  state.fieldSteps.forEach((step, index) => {
+    setText(`field-step-value-${index}`, signedStep(step));
+    const cell = document.querySelector(`[data-field-step-cell="${index}"]`);
+    cell?.classList.toggle('active', index === state.fieldStepIndex);
+  });
 }
 
 async function toggleAlwaysOnTop() {
@@ -481,6 +515,10 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, value));
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function pick(values) {
   return values[Math.floor(Math.random() * values.length)];
 }
@@ -492,6 +530,11 @@ function round(value, places) {
 
 function pad(value, length) {
   return String(value).padStart(length, '0');
+}
+
+function signedStep(value) {
+  const rounded = Math.round(Number(value) || 0);
+  return `${rounded >= 0 ? '+' : ''}${rounded}`;
 }
 
 function textBlock(tag, value) {
