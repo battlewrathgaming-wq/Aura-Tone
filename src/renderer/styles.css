@@ -261,7 +261,7 @@ input[type="range"] {
 }
 
 .connector-row {
-  grid-template-columns: 48px minmax(90px, 1fr) 74px 74px;
+  grid-template-columns: 48px minmax(90px, 1fr) 64px minmax(150px, 0.9fr);
 }
 
 .gear-row strong,
@@ -282,6 +282,25 @@ input[type="range"] {
   color: var(--muted);
   font-size: 0.78rem;
   text-align: right;
+}
+
+.connector-controls {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.connector-control {
+  display: grid;
+  grid-template-columns: 62px minmax(54px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.connector-control span {
+  text-align: left;
+  white-space: nowrap;
 }
 
 .connector-bar,
@@ -393,6 +412,14 @@ input[type="range"] {
 
   .connector-row span {
     display: none;
+  }
+
+  .connector-controls {
+    grid-column: 1 / -1;
+  }
+
+  .connector-control span {
+    display: block;
   }
 
   .status-grid {

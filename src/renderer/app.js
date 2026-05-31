@@ -338,14 +338,50 @@ function renderConnectors() {
     const fill = document.createElement('span');
     fill.style.width = `${Math.round(connector.coherence * 100)}%`;
     bar.appendChild(fill);
+    const coherence = textBlock('span', `coh ${Math.round(connector.coherence * 100)}%`);
+    const controls = document.createElement('div');
+    controls.className = 'connector-controls';
+    controls.append(
+      connectorRange(connector, 'distance', 'dist', 0, 1, 0.01, () => refreshConnectorRow(connector, fill, coherence)),
+      connectorRange(connector, 'slip', 'slip', 0, 0.5, 0.01, () => refreshConnectorRow(connector, fill, coherence))
+    );
     item.append(
       textBlock('strong', connector.id),
       bar,
-      textBlock('span', `dist ${Math.round(connector.distance * 100)}%`),
-      textBlock('span', `slip ${Math.round(connector.slip * 100)}%`)
+      coherence,
+      controls
     );
     return item;
   }));
+}
+
+function connectorRange(connector, key, label, min, max, step, onInput) {
+  const control = document.createElement('label');
+  control.className = 'connector-control';
+  const caption = document.createElement('span');
+  caption.textContent = `${label} ${Math.round(connector[key] * 100)}%`;
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(connector[key]);
+  input.addEventListener('input', () => {
+    connector[key] = Number(input.value);
+    caption.textContent = `${label} ${Math.round(connector[key] * 100)}%`;
+    onInput();
+  });
+  control.append(caption, input);
+  return control;
+}
+
+function refreshConnectorRow(connector, fill, coherence) {
+  updateConnectors();
+  updateFieldTone();
+  fill.style.width = `${Math.round(connector.coherence * 100)}%`;
+  coherence.textContent = `coh ${Math.round(connector.coherence * 100)}%`;
+  setText('coherence-readout', `coh ${Math.round(averageCoherence() * 100)}%`);
+  renderField();
 }
 
 function renderField() {

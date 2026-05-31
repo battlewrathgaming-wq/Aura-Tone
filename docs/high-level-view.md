@@ -225,6 +225,44 @@ Example pressure input:
 
 This should remain parked until the manual instrument matures. First, Aura Tone should become a small playable machine. Then adapters can let agents and logs bend the machine without taking it over.
 
+## Parked Later Idea: Tone Packets
+
+Portability should start with a small input shape, not project-specific integrations.
+
+Each data-driven project can eventually expose a small `tone-packet`. Aura Tone should interpret the packet without knowing the source project's internal model.
+
+```txt
+project adapter -> tone-packet -> Aura Tone
+```
+
+Draft packet families:
+
+- `tone-state`
+- `tone-pressure`
+- `tone-zone`
+- `tone-event`
+- `tone-patch`
+
+Example:
+
+```json
+{
+  "source": "Aura-Sense",
+  "kind": "tone-pressure",
+  "at": "2026-05-31T18:12:00Z",
+  "pressure": 0.64,
+  "cadence": 0.38,
+  "coherence": 0.71,
+  "zones": ["logs", "renderer"],
+  "events": [
+    { "kind": "warning", "weight": 0.4 },
+    { "kind": "pass", "weight": 0.8 }
+  ]
+}
+```
+
+The adapter belongs near the source project. Aura Tone stays the interpreter.
+
 ## V1 Boundary
 
 Good first version:
