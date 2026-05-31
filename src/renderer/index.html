@@ -10,6 +10,7 @@
     <header class="frame-chrome">
       <div class="frame-drag-region">
         <span>Aura Tone</span>
+        <span id="transport-state" class="transport-state">Idle</span>
       </div>
       <nav class="frame-controls" aria-label="Window controls">
         <button class="frame-button" type="button" id="pin-window" title="Toggle always on top" aria-label="Toggle always on top">Pin</button>
@@ -17,29 +18,101 @@
         <button class="frame-button danger" type="button" id="close-window" title="Close" aria-label="Close">X</button>
       </nav>
     </header>
-    <main class="shell">
-      <section class="panel">
+
+    <main class="tone-shell" aria-label="Aura Tone sound panel">
+      <section class="top-band" aria-label="Transport and runtime">
         <div>
-          <p class="eyebrow">Aura Tone</p>
-          <h1>Tone shell ready</h1>
-          <p class="summary">A light local sound panel for phase, gear, and coherence experiments.</p>
+          <p class="eyebrow">Phase instrument</p>
+          <h1>Gear coherence panel</h1>
         </div>
-        <dl class="status-grid">
+        <div class="transport-panel">
+          <button id="transport-toggle" class="command-button primary" type="button">Start</button>
+          <button id="randomize-patch" class="command-button" type="button">Mutate</button>
+          <button id="freeze-patch" class="command-button" type="button" aria-pressed="false">Freeze</button>
+        </div>
+        <dl class="status-grid" aria-label="Runtime status">
           <div>
             <dt>Runtime</dt>
             <dd id="health">Checking</dd>
           </div>
           <div>
-            <dt>Commands</dt>
+            <dt>Services</dt>
             <dd id="commands">0</dd>
           </div>
         </dl>
       </section>
-      <section class="panel compact">
-        <h2>Registered Services</h2>
+
+      <section class="control-strip" aria-label="Global controls">
+        <label>
+          <span>Tempo</span>
+          <input id="tempo-control" type="range" min="60" max="180" step="1" value="108">
+          <strong id="tempo-value">108 bpm</strong>
+        </label>
+        <label>
+          <span>Field Mix</span>
+          <input id="field-mix-control" type="range" min="0" max="100" step="1" value="42">
+          <strong id="field-mix-value">42%</strong>
+        </label>
+        <label>
+          <span>Gear Mix</span>
+          <input id="gear-mix-control" type="range" min="0" max="100" step="1" value="72">
+          <strong id="gear-mix-value">72%</strong>
+        </label>
+      </section>
+
+      <section class="machine-grid">
+        <div class="readout-panel gear-panel" aria-labelledby="gear-title">
+          <div class="panel-head">
+            <p class="eyebrow" id="gear-title">Gear Train</p>
+            <span id="tick-readout">tick 0000</span>
+          </div>
+          <div id="gear-list" class="gear-list"></div>
+        </div>
+
+        <div class="readout-panel connector-panel" aria-labelledby="connector-title">
+          <div class="panel-head">
+            <p class="eyebrow" id="connector-title">Connectors</p>
+            <span id="coherence-readout">coh 00%</span>
+          </div>
+          <div id="connector-list" class="connector-list"></div>
+        </div>
+
+        <div class="readout-panel field-panel" aria-labelledby="field-title">
+          <div class="panel-head">
+            <p class="eyebrow" id="field-title">Field Tone</p>
+            <span id="field-mode">stepped</span>
+          </div>
+          <div class="field-value">
+            <span>frequency</span>
+            <strong id="field-frequency">000 Hz</strong>
+          </div>
+          <div class="field-meter" aria-hidden="true"><span id="field-meter-fill"></span></div>
+          <dl class="field-stats">
+            <div>
+              <dt>source</dt>
+              <dd>connector coherence</dd>
+            </div>
+            <div>
+              <dt>range</dt>
+              <dd>90-620Hz</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="log-panel" aria-label="Event stream">
+        <div class="panel-head">
+          <p class="eyebrow">Event Stream</p>
+          <span id="patch-state">patch mutable</span>
+        </div>
+        <ul id="event-log" class="event-log"></ul>
+      </section>
+
+      <section class="service-panel" aria-label="Registered services" hidden>
         <ul id="service-list" class="service-list"></ul>
       </section>
     </main>
+
     <script src="./app.js"></script>
   </body>
 </html>
