@@ -332,20 +332,25 @@ function renderGears() {
   list.replaceChildren(...state.gears.map((gear) => {
     const item = document.createElement('article');
     item.className = 'gear-row';
-    const phaseIndex = Math.floor(gear.phase * 16);
-    const ring = Array.from({ length: 16 }, (_, index) => {
-      if (index === phaseIndex) return '@';
-      return index % Math.max(1, Math.round(16 / Math.min(gear.teeth, 16))) === 0 ? '#' : '.';
-    }).join('');
     item.append(
       textBlock('strong', gear.id),
-      textBlock('code', `[${ring}]`),
+      textBlock('code', `[${gearRing(gear)}]`),
       textBlock('span', `${gear.teeth}t`),
       textBlock('span', `x${gear.speed.toFixed(2)}`),
       textBlock('span', `${gear.tone}Hz`)
     );
     return item;
   }));
+}
+
+function gearRing(gear) {
+  const slots = 16;
+  const phaseIndex = Math.floor(gear.phase * slots);
+  const marks = Math.max(3, Math.min(8, Math.round(gear.teeth / 2)));
+  return Array.from({ length: slots }, (_slot, index) => {
+    if (index === phaseIndex) return '@';
+    return Math.round(index * marks / slots) !== Math.round((index + 1) * marks / slots) ? '#' : '.';
+  }).join('');
 }
 
 function renderConnectors() {
