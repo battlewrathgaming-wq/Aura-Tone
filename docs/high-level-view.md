@@ -174,6 +174,57 @@ effect:             tempo drift / connector tension / field density
 
 Keep this as an adapter boundary, not a core dependency.
 
+## Parked Later Idea: Arbitration Pressure
+
+Aura Tone may later become a way to see project or session arbitration through sound and compact display.
+
+This is not waveform-first music. It is project state interpreted as pressure:
+
+```txt
+file state -> pressure model -> gears / connectors / field tone -> sound + display
+```
+
+Possible input lanes:
+
+- working tree state
+- staged and unstaged files
+- changed zones such as renderer, docs, scripts, or tests
+- verification pass/fail state
+- active handoff or review state
+- repeated edits in the same area
+- branch divergence
+- log cadence and log event quality
+
+Possible mappings:
+
+- uncommitted edits raise connector tension
+- staged but uncommitted work increases held pressure
+- verification failure increases slip or harshness
+- verification pass creates a short convergence snap
+- repeated edits in one zone increase pulse density
+- quiet logs lower modulation
+- log bursts raise tempo multiplier or field stepping density
+- repeated warnings increase connector slip
+- recovery events brighten the field tone
+
+The log reader should feed this pressure model as one adapter lane, not become a core dependency. File state, git state, verification state, agent handoffs, and logs should all normalize into the same pressure input shape.
+
+Example pressure input:
+
+```json
+{
+  "dirty": true,
+  "staged": false,
+  "changedFiles": 5,
+  "zones": ["renderer", "docs"],
+  "verification": "passed",
+  "logCadence": "active-clean",
+  "handoff": "pending"
+}
+```
+
+This should remain parked until the manual instrument matures. First, Aura Tone should become a small playable machine. Then adapters can let agents and logs bend the machine without taking it over.
+
 ## V1 Boundary
 
 Good first version:
