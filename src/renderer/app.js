@@ -1,5 +1,7 @@
 const FIELD_MIN = 90;
 const FIELD_MAX = 620;
+const CATCH_ON = 0.72;
+const CATCH_OFF = 0.48;
 
 const state = {
   frame: {
@@ -24,8 +26,8 @@ const state = {
     { id: 'C', teeth: 13, speed: 1.37, phase: 0.72, tone: 330, voice: 'square', lastTooth: -1 }
   ],
   connectors: [
-    { id: 'A:B', from: 'A', to: 'B', distance: 0.58, slip: 0.18, conductivity: 0.7, coherence: 0 },
-    { id: 'B:C', from: 'B', to: 'C', distance: 0.36, slip: 0.09, conductivity: 0.82, coherence: 0 }
+    { id: 'A:B', from: 'A', to: 'B', distance: 0.58, slip: 0.18, conductivity: 0.7, coherence: 0, caught: false },
+    { id: 'B:C', from: 'B', to: 'C', distance: 0.36, slip: 0.09, conductivity: 0.82, coherence: 0, caught: false }
   ]
 };
 
@@ -143,9 +145,7 @@ function tick(now) {
 }
 
 function advanceMachine(steps) {
-  const previousFieldStep = state.fieldStepIndex;
   state.tick += steps;
-  state.fieldStepIndex = Math.floor(state.tick / 4) % state.fieldSteps.length;
   for (const gear of state.gears) {
     const previousTooth = gear.lastTooth;
     gear.phase = wrap01(gear.phase + steps * gear.speed / gear.teeth);
@@ -155,11 +155,11 @@ function advanceMachine(steps) {
       triggerGear(gear, tooth);
     }
   }
-  updateConnectors();
-  updateFieldTone();
-  if (state.fieldStepIndex !== previousFieldStep) {
-    pushLog(`field step ${state.fieldStepIndex + 1} ${signedStep(state.fieldSteps[state.fieldStepIndex])}`);
+  const catches = updateConnectors({ detectCatch: true });
+  for (const connector of catches) {
+    advanceFieldStep(connector.id);
   }
+  updateFieldTone();
 }
 
 function triggerGear(gear, tooth) {
@@ -188,7 +188,8 @@ function triggerGear(gear, tooth) {
   pushLog(`gear ${gear.id} tooth ${pad(tooth, 2)} ${Math.round(gear.tone * accent)}Hz`);
 }
 
-function updateConnectors() {
+function updateConnectors(options = {}) {
+  const catches = [];
   for (const connector of state.connectors) {
     const from = findGear(connector.from);
     const to = findGear(connector.to);
@@ -196,7 +197,16 @@ function updateConnectors() {
     const closeness = 1 - spread * 2;
     const pull = 1 - connector.distance;
     connector.coherence = clamp01((closeness * 0.7 + pull * connector.conductivity * 0.3) * (1 - connector.slip));
+    if (options.detectCatch) {
+      if (!connector.caught && connector.coherence >= CATCH_ON) {
+        connector.caught = true;
+        catches.push(connector);
+      } else if (connector.caught && connector.coherence <= CATCH_OFF) {
+        connector.caught = false;
+      }
+    }
   }
+  return catches;
 }
 
 function updateFieldTone() {
@@ -294,6 +304,7 @@ function randomizePatch() {
     connector.distance = round(0.2 + Math.random() * 0.65, 2);
     connector.slip = round(Math.random() * 0.28, 2);
     connector.conductivity = round(0.45 + Math.random() * 0.5, 2);
+    connector.caught = false;
   });
   updateConnectors();
   updateFieldTone();
@@ -315,6 +326,11 @@ function setFieldMode(mode) {
   updateFieldTone();
   renderField();
   pushLog(`field ${mode}`);
+}
+
+function advanceFieldStep(source) {
+  state.fieldStepIndex = (state.fieldStepIndex + 1) % state.fieldSteps.length;
+  pushLog(`catch ${source} -> field step ${state.fieldStepIndex + 1} ${signedStep(state.fieldSteps[state.fieldStepIndex])}`);
 }
 
 function bindFieldStep(index) {
